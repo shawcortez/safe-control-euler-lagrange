@@ -58,8 +58,8 @@ if data['compute_zcbf']:
 #raise(SystemExit)
 
 # Setup ode solver
-q0 = data['q0'] #[(q_max[0]-q_min[0])/2.0 + q_min[0], (q_max[1]-q_min[1])/2.0 + q_min[1]]
-v0 = data['v0']#[0.0, 0.0]
+q0 = data['q0'] 
+v0 = data['v0']
 x0 = np.array(q0+v0)
 T_sim = data['T_sim']
 N_sim = data['N_sim']
@@ -70,80 +70,14 @@ t_sim = np.linspace(0.0,T_sim,N_sim)
 
 if data['sim_control'] == 'cont_time':
 	# Continous control 
-	t,y,u = zcbf_el1.run_simulation(t_sim,x0,data['cont_type'],rtol=1e6,atol=1e-7,hmax=0.01,cont=True,T=None)
+	t,y,u = zcbf_el1.run_simulation(t_sim,x0,data['cont_type'],rtol=1e-6,atol=1e-7,hmax=0.01,cont=True,T=None)
 
 if data['sim_control'] == 'discrete_time':
 	# Sampled-data control
-	#zcbf_el1.check_sampling_req(T_sample)
-	#raise(SystemExit)
-	t,y,u = zcbf_el1.run_simulation(t_sim,x0,'ZCBF_control_sampled',rtol=1e6,atol=1e-7,hmax=0.01,cont=False,T=T_sample)
+	t,y,u = zcbf_el1.run_simulation(t_sim,x0,'ZCBF_control_sampled',rtol=1e-6,atol=1e-7,hmax=0.01,cont=False,T=T_sample)
 
 
  
-
-#-----------------
-# plot results
-# plot_counter = 0
-
-# # Plot q0
-# plt.figure(plot_counter)
-# plt.plot(t,y[:,0],'r-',linewidth=2,label='q0')
-# plt.plot([0,T_sim], [q_max[0], q_max[0]], 'k--')
-# plt.plot([0,T_sim], [q_min[0], q_min[0]], 'k--')
-# plt.xlabel('time')
-# plt.ylabel('q0(t)')
-# plt.legend()
-
-
-# # Plot q1
-# plot_counter += 1
-# plt.figure(plot_counter)
-# plt.plot(t,y[:,1],'r--',linewidth=2,label='q1')
-# plt.plot([0,T_sim], [q_max[1], q_max[1]], 'k--')
-# plt.plot([0,T_sim], [q_min[1], q_min[1]], 'k--')
-# plt.xlabel('time')
-# plt.ylabel('q1(t)')
-# plt.legend()
-
-# # Plot v0
-# plot_counter += 1
-# plt.figure(plot_counter)
-# plt.plot(t,y[:,2],'g-',linewidth=2,label='v0')
-# plt.plot([0,T_sim], [v_max[0], v_max[0]], 'k--')
-# plt.plot([0,T_sim], [v_min[0], v_min[0]], 'k--')
-# plt.xlabel('time')
-# plt.ylabel('v0(t)')
-# plt.legend()
-
-# # Plot v1
-# plot_counter += 1
-# plt.figure(plot_counter)
-# plt.plot(t,y[:,3],'g--',linewidth=2,label='v1')
-# plt.plot([0,T_sim], [v_max[1], v_max[1]], 'k--')
-# plt.plot([0,T_sim], [v_min[1], v_min[1]], 'k--')
-# plt.xlabel('time')
-# plt.ylabel('v1(t)')
-# plt.legend()
-
-# # Plot u0
-# plot_counter += 1
-# plt.figure(plot_counter)
-# plt.plot(t,u[:,0],'r',linewidth=2,label='u0')
-# plt.plot([0,T_sim], [u_max[0], u_max[0]], 'k--')
-# plt.plot([0,T_sim], [u_min[0], u_min[0]], 'k--')
-# plt.xlabel('time')
-# plt.ylabel('u(t)')
-# plt.legend()
-
-# # Plot u1
-# plot_counter += 1
-# plt.figure(plot_counter)
-# plt.plot(t,u[:,1],'g',linewidth=2,label='u1')
-# plt.plot([0,T_sim], [u_max[1], u_max[1]], 'k--')
-# plt.plot([0,T_sim], [u_min[1], u_min[1]], 'k--')
-# plt.xlabel('time')
-# plt.ylabel('u(t)')
-# plt.legend()
 
 fig, axes = plt.subplots(3,2)
 fontsize = 15
