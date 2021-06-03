@@ -32,6 +32,32 @@ class TwoDOFSystem():
         self.c1 = c1
         self.c5 = c5
 
+    def f_eval(self, q):
+        '''Compute the forward kinematics map for the end-effector'''
+
+        l0 = self.l_list[0]
+        l1 = self.l_list[1]
+        
+        x0 = l0*np.cos(q[0]) + l1*np.cos(q[0] + q[1])
+        x1 = l0*np.sin(q[0]) + l1*np.sin(q[0] + q[1])
+
+        return np.array([x0, x1])
+
+    def J_eval(self, q):
+        '''Compute the Jacobian of the forward kinematic map'''
+
+        l0 = self.l_list[0]
+        l1 = self.l_list[1]
+
+        J = np.zeros(self.n_joints, self.n_joints)
+
+        #J[0,0] = 
+
+        return
+
+    def H_eval(self, q):
+        '''Compute the Hessian of the forward kinematic map'''
+
     def M_eval(self,q):
         '''Compute inertia matrix'''
 
