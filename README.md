@@ -26,7 +26,7 @@ To install this project, assuming the appropriate Python/modules are installed, 
 
 To use the code, first try running:
 
-python zcbf_simulation_main exp2
+python zcbf_simulation_main.py exp2
 
 The code should output a message stating "Running experiment: ZCBF_control_exp2.yaml" and proceed to compute the ZCBF parameters to be used. Finally, the simulation should be run and a plot of the state and input trajectories should appear. Once the plot is closed, a message should appear asking to save the data. Enter 'no' to avoid saving.
 
