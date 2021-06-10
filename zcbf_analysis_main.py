@@ -28,7 +28,7 @@ eta_bar = 0.01
 
 # Consctruct 2DOF system dynamics class
 gains = { 'Kp': 1.0, 'Kv': 0.1}
-two_dof_sys = two_dof_module.TwoDOFSystem(m_list,l_list,f_list,I_list,grav,gains)
+two_dof_sys = two_dof_module.TwoDOFSystem(m_list,l_list,f_list,I_list,grav,gains,None,None)
 
 # Construct ZCBF class with \alpha(h) = arctan(h), \beta(h) = h^3
 zcbf_el1 = ZCBF_module.ZCBF('atan','cubic',q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,two_dof_sys)

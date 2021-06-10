@@ -205,8 +205,8 @@ class ZCBF():
             H_right_bound_delta = H_right_bound
 
         # Plot boundaries
-        plt.plot(q_i,H_upper_bound,'k--',linewidth=2.0)
-        plt.plot(q_i,H_lower_bound,'k--',linewidth=2.0)
+        plt.plot(q_i,H_upper_bound,'w--',linewidth=2.0)
+        plt.plot(q_i,H_lower_bound,'w--',linewidth=2.0)
         plt.plot(q_left_bound,H_left_bound,'k--',linewidth=2.0)
         plt.plot(q_right_bound,H_right_bound,'k--',linewidth=2.0)
         if delta_terms == True:
@@ -236,19 +236,33 @@ class ZCBF():
         # Region VI
         ax.fill_between(q_i,H_lower_bound_delta,H_lower_bound, facecolor = self.c_yellow )
         # Region VII
-        plt.plot(q_i[:n_length//2],rho_man[:n_length//2],'r-.',linewidth=2.0)
+        plt.plot(q_i[:n_length//2],rho_man[:n_length//2],'r-.',linewidth=2.5)
         # Region VIII
-        plt.plot(q_i[n_length//2:],rho_man[n_length//2:],'w-.',linewidth=2.0)
+        plt.plot(q_i[n_length//2:],rho_man[n_length//2:],'g-.',linewidth=2.5, color=self.c_yellow)
 
         # Label plot components
         #plt.text(0, -1.25, r'$\displaystyle \mathcal{C}_i$', fontsize=16)
         
 
         # Define labels and show plot
+        ax.text(-0.4, 0.3, r'$\displaystyle v_i = \gamma \alpha(\bar{h}_i(q_i))$', fontsize=18, color = 'white')
+        ax.text(-0.4, -0.45, r'$\displaystyle v_i = \gamma \alpha(\underline{h}_i(q_i))$', fontsize=18, color = 'white')
+        plt.arrow(-0.02,0.5,  0.0, 0.2,head_width=0.02,color='white')
+        plt.arrow(-0.02,-0.5, 0.0, -0.2,head_width=0.02,color='white')
+        ax.text(0.72, -1.5, r'$\displaystyle q_{max_i}$', fontsize=18, color = 'black')
+        ax.text(-0.95, -1.5, r'$\displaystyle q_{min_i}$', fontsize=18, color = 'black')
+        ax.text(-0.06, -1.35, r'$\displaystyle \mathcal{Q}_i$', fontsize=18, color = 'black')
+        plt.arrow(0.12,-1.25, 0.8,0,head_width=0.05,color='black')
+        plt.arrow(-0.12,-1.25, -0.8,0,head_width=0.05,color='black')
         ax.set_xlabel(r'$\displaystyle q_i$', fontsize=24)
         ax.set_ylabel(r'$\displaystyle v_i$', fontsize=24)
         plt.tick_params(labelsize=15)
         plt.grid(True)
+        plt.tight_layout()
+        right_side = ax.spines["right"]
+        top_side = ax.spines["top"]
+        right_side.set_visible(False)
+        top_side.set_visible(False)
         plt.show()
 
     def determine_region_H(self,q,v):
