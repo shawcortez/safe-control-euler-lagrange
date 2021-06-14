@@ -39,6 +39,18 @@ grav= data['grav'] # gravity constant
 # Consctruct 2DOF system dynamics class
 two_dof_sys = two_dof_module.TwoDOFSystem(m_list,l_list,f_list,I_list,grav,data['gains'],data['ref'] ,data['nom_control'],kc=data['kc'], kg=data['kg'], km2 = data['km2'], c3 = data['c3'], c1 = data['c1'], c5= data['c5']) #
 
+# Define nonlinear transform for nonlinear constraints
+try:
+    ctype0 = data['nonlinear_params']['constraint0']['type']
+    ctype1 = data['nonlinear_params']['constraint1']['type']
+    ctype0_params = data['nonlinear_params']['constraint0']['params']
+    ctype1_params = data['nonlinear_params']['constraint1']['params']
+    n_transform = ntm.NonlinearTransformation(two_dof_sys, [ctype0, ctype1], [ctype0_params, ctype1_params])
+    print('Nonlinear tranformation added')
+except:
+    n_transform = None
+    print('No nonlinear transformation')
+
 # Construct ZCBF class
 # Define ZCBF (initial) parameters
 gamma = data['gamma'] 
@@ -47,7 +59,7 @@ delta = data['delta']
 eta_bar = data['eta_bar'] 
 alpha = data['alpha']
 beta = data['beta']
-zcbf_el1 = ZCBF_module.ZCBF(alpha,beta,q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,two_dof_sys)
+zcbf_el1 = ZCBF_module.ZCBF(alpha,beta,q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,two_dof_sys,n_transform)
 #zcbf_el2 = ZCBF_module.ZCBF('linear','cubic',q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,two_dof_sys)
 
 # Compute safe-by-design ZCBF parameters

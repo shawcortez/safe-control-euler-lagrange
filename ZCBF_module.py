@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
 import two_dof_module
+import nonlinear_transformation_module as ntm
 import cvxopt
 from scipy.integrate import odeint
 
@@ -74,7 +75,7 @@ class ExtendedClassK():
             return min(rho_qi) 
             
 class ZCBF():
-    def __init__(self,alpha_type,beta_type,q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,sys_dyn=None):
+    def __init__(self,alpha_type,beta_type,q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,sys_dyn=None,n_transform=None):
         '''Initialize ZCBF class with chosen \alpha, \beta functions, state/input constraints, and robustness margins'''
         
         # Store ZCBF parameters
@@ -94,6 +95,16 @@ class ZCBF():
         self.u_max = u_max
         self.n = len(q_min) # number of states in the system. Note q_min,q_max..., u_max are all of the same size.
         self.sys_dyn = sys_dyn
+        self.n_transform = n_transform
+
+        if self.n_transform == None:
+            self.nt_eval = ntm.eval_id
+            self.nt_eval_gradient = ntm.eval_gradient_id
+            self.nt_eval_hessian = ntm.eval_hessian_id
+        else:
+            self.nt_eval = n_transform.eval
+            self.nt_eval_gradient = n_transform.eval_gradient
+            self.nt_eval_hessian = n_transform.eval_hessian
 
         #Check that q_min...u_max are appropriately defined
         if (self.n == len(q_max) and self.n == len(v_min) and self.n== len(v_max) and
@@ -333,17 +344,27 @@ class ZCBF():
         return np.matmul(M, mu + chi + psi) + np.matmul(C,v)+ np.matmul(self.sys_dyn.F, v) - g
 
 
+    def compute_nonlinear_fx(q_tilde, q, v):
+
+        M = self.sys_dyn.M_eval(q_tilde)
+        H = self.nt_eval_hessian(q_tilde)
+        grad_c = self.nt_eval_gradient(q_tilde)
+
+        return # to do complete : M.dot( grad_c.dot( grad_c. ) )
 
 
-
-    def compute_zcbf_control(self,q,v,f_x,g_x,t):
+    def compute_zcbf_control(self,q_tilde,v_tilde,f_x,g_x,t):
         ''' Compute u*, the zcbf-based control law, given the 
         system dynamics f_x, g_x and nominal control law u_nom'''
 
+        # Convert to transformed states
+        q = self.nt_eval(q_tilde)
+        v = self.nt_eval_gradient(q_tilde).T.dot(v_tilde)
 
         # Construct Lie derivatives of b w.r.t system dynamics
         S = np.concatenate((-np.eye(self.n),np.eye(self.n)))
-        Lf_b1 = S.dot(f_x)
+        nt_fx = self.compute_nonlinear_fx(q_tilde, q, v)
+        Lf_b1 = S.dot(f_x + nt_fx)
         Lg_b = S.dot(g_x)
 
         # Compute nominal control law

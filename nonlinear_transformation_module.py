@@ -8,7 +8,7 @@ import cvxopt
 from scipy.integrate import odeint
 
 class NonlinearConstraints():
-    def __init__(self, type, params):
+    def __init__(self, constraint_type, params):
 
         # Define constraint type
         self.type = constraint_type
@@ -33,7 +33,7 @@ class NonlinearConstraints():
         '''Evaluate the constraint gradient at x'''
 
         if self.type == 'ellipsoid':
-            return -0.5*(self.P + self.P.T).dot( q-self.qr )
+            return -0.5*(self.P + self.P.T).dot( x-self.qr )
 
         if self.type == 'planar':
             return self.qr
@@ -56,12 +56,14 @@ class NonlinearTransformation():
         self.n = dynamics.n_joints # number of position states in the system
 
         # Check that the number of constraints is equal to the number of position states
-        if (len(constraint_type_list) != self.n) or (len(params_list != self.n)):
+        if (len(constraint_type_list) != self.n) or (len(params_list) != self.n):
             raise TypeError('Not enough constraints defined. Need n constraints') 
 
+
         # Construct constraints
+        self.c = []
         for ii, ci_type in enumerate(constraint_type_list):
-            self.c[ii] = NonlinearConstraints(ci_type,params_list[ii])
+            self.c.append( NonlinearConstraints(ci_type,params_list[ii]) )
 
     def eval(self, x):
         '''Transform the given state of the original dynamics'''
@@ -71,14 +73,25 @@ class NonlinearTransformation():
     def eval_gradient(self, x):
         '''Compute the gradient of the constraint transformation'''
 
-        return np.array([self.c[ii].eval_gradient(x) for ii in range(self.n)]  )
+        return np.array([self.c[ii].eval_gradient(x) for ii in range(self.n)]  ).T
 
     def eval_hessian(self, x):
         '''Compute the hessian of the constraint transformation'''
 
-        # TO DO: write in tensors 
+        return np.array([self.c[ii].eval_hessian(x) for ii in range(self.n)]  )
 
 
+def eval_id(x):
+    '''Define identity function for system of state n'''
+    return x
+
+def eval_gradient_id(x):
+
+    return np.eye(len(x))
+
+def eval_hessian_id(x):
+
+    return 0.0
 
 
 
