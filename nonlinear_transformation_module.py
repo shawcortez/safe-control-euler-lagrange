@@ -91,7 +91,7 @@ def eval_gradient_id(x):
 
 def eval_hessian_id(x):
 
-    return 0.0
+    return np.zeros((len(x),len(x),len(x)))
 
 
 

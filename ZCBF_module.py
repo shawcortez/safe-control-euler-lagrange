@@ -344,16 +344,16 @@ class ZCBF():
         return np.matmul(M, mu + chi + psi) + np.matmul(C,v)+ np.matmul(self.sys_dyn.F, v) - g
 
 
-    def compute_nonlinear_fx(q_tilde, q, v):
+    def compute_nonlinear_fx(self, q_tilde, v_tilde):
 
-        M = self.sys_dyn.M_eval(q_tilde)
+        G = self.sys_dyn.G_eval(q_tilde)
         H = self.nt_eval_hessian(q_tilde)
         grad_c = self.nt_eval_gradient(q_tilde)
 
-        return # to do complete : M.dot( grad_c.dot( grad_c. ) )
+        return np.linalg.inv(G).dot( grad_c.dot( np.linalg.inv( grad_c.T ).dot( v_tilde.dot(H.dot(v_tilde)))  )   )
 
 
-    def compute_zcbf_control(self,q_tilde,v_tilde,f_x,g_x,t):
+    def compute_zcbf_control(self,q_tilde,v_tilde,f_x_tilde,g_x_tilde,t):
         ''' Compute u*, the zcbf-based control law, given the 
         system dynamics f_x, g_x and nominal control law u_nom'''
 
@@ -361,9 +361,14 @@ class ZCBF():
         q = self.nt_eval(q_tilde)
         v = self.nt_eval_gradient(q_tilde).T.dot(v_tilde)
 
+        # Convert to transformed dynamics
+        grad_c = self.nt_eval_gradient(q_tilde)
+        f_x = grad_c.T.dot(f_x_tilde)
+        g_x = grad_c.T.dot(g_x_tilde)
+
         # Construct Lie derivatives of b w.r.t system dynamics
         S = np.concatenate((-np.eye(self.n),np.eye(self.n)))
-        nt_fx = self.compute_nonlinear_fx(q_tilde, q, v)
+        nt_fx = self.compute_nonlinear_fx(q_tilde, v_tilde)
         Lf_b1 = S.dot(f_x + nt_fx)
         Lg_b = S.dot(g_x)
 
@@ -696,14 +701,16 @@ class ZCBF():
 
     def compute_eps_function(self,ii,q,dq,data):
         '''Compute function to minimize in order to compute epsilon'''
+        # To do: distinguish between q and q_tilde
         g = self.sys_dyn.g_eval(q)
-        M = self.sys_dyn.M_eval(q)
+        grad_c = self.nt_eval(q)
+        G_inv = np.matmul(self.sys_dyn.M_eval(q), np.linalg.inv(grad_c.T) )
         ei = np.zeros((1,self.n))
         ei[0,ii] = 1.0
 
 
         # Function to minimize to compute epsilon
-        fi = (self.u_max[ii] - abs(g[ii]))/( max(np.absolute(np.matmul(ei,M).flatten())) ) - self.eta
+        fi = (self.u_max[ii] - abs(g[ii]))/( max(np.absolute(np.matmul(ei,G_inv).flatten())) ) - self.eta
 
         if fi <= 0: # check if infeasible delta/eta/umax/umin were chosen
             print('epsilon <= ')

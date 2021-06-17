@@ -7,8 +7,8 @@ import nonlinear_transformation_module as ntm
 import my_plot_module as mpm
 
 # Define system constraints
-q_max = [0.95, 0.5]
-q_min = [0.0, -0.5] 
+q_max = [5.0, 2.0]
+q_min = [0.0, -2.0] 
 v_max = [1.5, 1.5]
 v_min = [-1.5, -1.5]
 u_max = [10.0, 10.0]
@@ -34,13 +34,13 @@ two_dof_sys = two_dof_module.TwoDOFSystem(m_list,l_list,f_list,I_list,grav,gains
 
 # Construct nonlinear tranformation
 params_ellipsoid = {}
-params_ellipsoid['a'] = 1.0
-params_ellipsoid['P']= [1.0, 0.0 , 0.0, -1.0] # nxn matrix flattened into list
-params_ellipsoid['qr']= [-1.0, 0.0]  # center of ellipsoid
+params_ellipsoid['a'] = -1.0
+params_ellipsoid['P']= [-0.4, 0.0 , 0.0, -0.4] # nxn matrix flattened into list
+params_ellipsoid['qr']= [3.5, 0.0]  # center of ellipsoid
 params_planar = {}
 params_planar['a'] = 0.0
 params_planar['P']= [0.0, 0.0 , 0.0, 0.0] # nxn matrix flattened into list
-params_planar['qr']= [0.1, 1.0]  # center of ellipsoid
+params_planar['qr']= [0.0, 1.0]  # center of ellipsoid
 n_transform = ntm.NonlinearTransformation(two_dof_sys, ['ellipsoid', 'planar'], [params_ellipsoid, params_planar])
 
 # Compute Gradient
@@ -48,15 +48,15 @@ print('Gradient: ')
 print(n_transform.eval_gradient(np.array([0.0, 0.0])))
 print('end')
 
-print('Invert gradient: ')
-print(np.linalg.inv(n_transform.eval_gradient(np.array([0.0, 0.0]))))
+#print('Invert gradient: ')
+#print(np.linalg.inv(n_transform.eval_gradient(np.array([0.0, 0.0]))))
 
 #Compute Hessian
-#print(n_transform.eval_hessian(np.array([0.1, 0.1])))
-
+print(n_transform.eval_hessian(np.array([0.1, 0.1])))
+print(n_transform.eval_hessian(np.array([0.1, 0.1])).shape)
 #Multiply Hessian
-#v_test = np.array([0.1, 0.1])
-#print(v_test.dot( n_transform.eval_hessian(np.array([0.1, 0.1])).dot(v_test)   ))
+v_test = np.array([0.1, 0.1])
+print(v_test.dot( n_transform.eval_hessian(np.array([0.1, 0.1])).dot(v_test)   ))
 
 
 plot_class = mpm.PlotClass()

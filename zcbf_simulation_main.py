@@ -4,6 +4,8 @@ import matplotlib
 matplotlib.rcParams['text.usetex'] = True
 import ZCBF_module
 import two_dof_module
+import nonlinear_transformation_module as ntm
+import my_plot_module as mpm
 import yaml
 import sys
 
@@ -128,6 +130,19 @@ axes[2,1].set_xlabel(r't', fontsize=fontsize)
 #plt.tick_params(labelsize=15)
 
 #axes[2,1].legend()
+
+plot_class = mpm.PlotClass()
+contour_range = np.linspace(-3.0, 3.0, num=100)
+
+
+
+fig_ct = 2
+
+for ii in range(n_transform.n):
+    plot_class.add_contour(fig_ct, n_transform.c[ii].eval, contour_range, contour_range, levels = [q_min[ii]], color='red')
+    plot_class.add_contour(fig_ct, n_transform.c[ii].eval, contour_range, contour_range, levels = [q_max[ii]], color='orange')
+    #plot_class.add_fill(fig_ct, n_transform.c[ii].eval, contour_range, contour_range, level = [0.01, 0.05])
+plot_class.add_2D_phase(fig_ct, y[:,0:2], color='black')
 
 
 plt.show()

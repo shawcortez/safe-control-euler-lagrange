@@ -58,6 +58,12 @@ class TwoDOFSystem():
     def H_eval(self, q):
         '''Compute the Hessian of the forward kinematic map'''
 
+    def G_eval(self, q):
+        '''return general G matrix of dynamics: dot(v) = G ( f1 + f2 + f3 + u). This could be the inertia matrix or generalized inertia
+        matrix for task space dynamics'''
+
+        return np.linalg.inv(self.M_eval(q))
+
     def M_eval(self,q):
         '''Compute inertia matrix'''
 

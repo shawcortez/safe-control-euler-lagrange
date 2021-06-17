@@ -12,31 +12,36 @@
 
 #---------------
 # Constraint sets
-        # pi/2              5 pi/6
-q_max: [1.5707963267948966, 2.617993877991494] 
-        # -pi/2               pi/2
-q_min: [-1.5707963267948966, 1.5707963267948966]
+q_max: [2.0, 2.0] 
+q_min: [-2.0, -2.0]
 v_max: [1.5, 1.5]
 v_min: [-1.5, -1.5]
-u_max: [18.0, 10.0]
-u_min: [-18.0, -10.0]
+u_max: [1000000000.0, 1000000000.0] # FOR TESTING
+u_min: [-1000000000.0, -100000000.0] # FOR TESTING
+#u_max: [18.0, 10.0] # Original
+#u_min: [-18.0, -10.0]
 
 #--------------
 # Constraint params
 
 nonlinear_params:
   constraint0: 
-    type: 'ellipsoid'
+    # type: 'ellipsoid'
+    # params:
+    #   a: -1.0
+    #   P: [-0.4, 0.0 , 0.0, -0.4] # nxn matrix flattened into list
+    #   qr: [8.0, 0.0]  # center of ellipsoid
+    type: 'planar'
     params:
-      a: 1.0
-      P: [1.0, 0.0 , 0.0, 2.0] # nxn matrix flattened into list
-      qr: [-0.5, 0.0]  # center of ellipsoid
+      a: 0.0
+      P: [0.0, 0.0 , 0.0, 0.0] # nxn matrix flattened into list
+      qr: [1.0, 0.1]  # center of ellipsoid
   constraint1: 
     type: 'planar'
     params:
       a: 0.0
       P: [0.0, 0.0 , 0.0, 0.0] # nxn matrix flattened into list
-      qr: [0.7, 0.4]  # center of ellipsoid
+      qr: [1.0, 1.0]  # center of ellipsoid
 
 #---------------
 # System Dynamic parameters
@@ -56,33 +61,33 @@ dv_bounds: 0.1         # Step size used in two_dof_dynamics_bounds.main to compu
 #---------------
 # Define nominal control type (only supports ComputedTorque or PD)
 nom_control: 'ComputedTorque' #(only supports ComputedTorque or PD)
-cont_type: 'ZCBF_control' # nom_control: only implement nominal control, ZCBF_contol: implement ZCBF_controller for cont time, ZCBF_control_sampled: implement sampled-data controller
+cont_type: 'ZCBF_control' #'nom_control' #    'nom_control' # nom_control: only implement nominal control, ZCBF_contol: implement ZCBF_controller for cont time, ZCBF_control_sampled: implement sampled-data controller
 
 
 #---------------
 # Reference trajectory for nominal controller
 ref:
   # pi/2 + 1.9
-  r0_amp: 3.4707963267948965
-  r0_omega: 1.3
+  r0_amp: 0.5
+  r0_omega: 0.5
   # (q_max[1]-q_min[1])/2.0 + 2.1
-  r1_amp: 2.6235987755982987
-  r1_omega: 1.3
+  r1_amp: -0.5
+  r1_omega: 1.0
   # (q_max[1]-q_min[1])/2.0 + q_min[1]
-  r1_b: 2.0943951023931953
+  r1_b: 0.0
 gains:
   Kp: 5.0
   Kv: 5.0
 
 #---------------
 # Initial ZCBF parameters
-gamma: 2.0
-nu: 10.0
-delta: 0.01 
-eta_bar: 7.0
+gamma: 0.4 # 0.4
+nu: 4571671.0 #10 # 4571671.059604991
+delta: 0.0001 
+eta_bar: 0.1 # 6.5
 alpha: 'atan'
 beta: 'cubic'
-compute_zcbf: True  # If true, new safe-by-design zcbf parameters are computed, otherwise not
+compute_zcbf: False  # If true, new safe-by-design zcbf parameters are computed, otherwise not
 dq: 0.01             # Defines resolution for grid search when computing zcbf parameters
 eps_frac: 0.5       # Fraction of the maximum epsilon to use. The maximum epsilon is the one that satisfies Assumption 1 (from paper)
 nu_frac: 1.0        # Fraction of nu to use if original nu listed here is not within the ZCBF parameter range
@@ -93,9 +98,9 @@ nu_frac: 1.0        # Fraction of nu to use if original nu listed here is not wi
 
 # Initial conditions
 #    [(q_max[0]-q_min[0])/2.0 + q_min[0], (q_max[1]-q_min[1])/2.0 + q_min[1]]
-q0: [ 0.0, 2.09439510239 ]
+q0: [ 0.0, 0.0]
 v0: [0.0, 0.0]
-T_sim: 15.0   # Simulation end time (s)
-N_sim: 1000   # Number of data points from t = 0 to t = T_sim (must be an int)
-sim_control: 'discrete_time'  # only options: 'cont_time' for continuous time control or 'discrete_time' for sampled-data control
+T_sim: 30.0 # 15.0   # Simulation end time (s)
+N_sim: 2000 # 1000   # Number of data points from t = 0 to t = T_sim (must be an int)
+sim_control: 'discrete_time'  # 'cont_time' #'cont_time' # only options: 'cont_time' for continuous time control or 'discrete_time' for sampled-data control
 T_sample: 0.001 #(only used) if sim_control = 'discrete_time'
