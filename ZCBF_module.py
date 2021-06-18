@@ -130,7 +130,17 @@ class ZCBF():
     def h_ubar(self,ii,q_i):
         '''Define ubar{h}_i (delta = 0)'''
         return q_i - self.q_min[ii]
-    
+
+    def check_Q(self, q):
+        '''Check if given state is in Q, return True/False'''
+        Q_bool = True
+
+        for ii, qi in enumerate(q):
+            if self.h_bar(ii,qi)*self.h_ubar(ii,qi) < -1e-12:
+                Q_bool = False
+
+        return Q_bool
+
     def h_bar_delta(self,ii,q_i):
         '''Define bar{h}_i (delta \neq 0)'''
         return self.h_bar(ii,q_i) + self.delta
@@ -138,6 +148,18 @@ class ZCBF():
     def h_ubar_delta(self,ii,q_i):
         '''Define ubar{h}_i (delta \neq 0)'''
         return self.h_ubar(ii,q_i) + self.delta
+
+    def check_Q_delta(self, q):
+        '''Check if given state is in Q_delta, return True/False'''
+        Q_bool = True
+
+        for ii, qi in enumerate(q):
+            if self.h_bar_delta(ii,qi)*self.h_ubar_delta(ii,qi) < -1e-12:
+                print(self.h_bar_delta(ii,qi)*self.h_ubar_delta(ii,qi))
+                Q_bool = False
+
+        return Q_bool
+    
     
     def b_bar(self,ii,q_i,v_i):
         '''Define bar{b}_i (delta = 0)'''
@@ -536,15 +558,20 @@ class ZCBF():
 
         return tout,y,u
 
-    def compute_zcbf_parameters(self,sim_control,dq = 0.5,T_sample=0.0,eps_frac = 0.5,nu_frac=0.5):
+    def compute_zcbf_parameters(self,sim_control,qt_min, qt_max, dq = 0.5,T_sample=0.0,eps_frac = 0.5,nu_frac=0.5, nt_id_bool=True):
         '''Compute safe-by-design zcbf parameters'''
 
         # Compute epsilon and gamma2_star, which quantifies how much excess control authority the system has
         # and the max velocity allowed in the safe set respectively so that the control can enforce foward invariance
         # To compute epsilon and gamm2_star, we do a grid search over Qdelta for all i 
 
-        qmin_delta = self.q_min - self.delta*np.ones(self.n)
-        qmax_delta = self.q_max + self.delta*np.ones(self.n)
+        if nt_id_bool:
+            qmin_delta = qt_min - self.delta*np.ones(self.n)
+            qmax_delta = qt_max + self.delta*np.ones(self.n)
+        else:
+            qmin_delta = qt_min
+            qmax_delta = qt_max
+
         dq_list = [dq for ii in range(self.n)]
         
         # Compute epsilon parameter
@@ -702,45 +729,63 @@ class ZCBF():
     def compute_eps_function(self,ii,q,dq,data):
         '''Compute function to minimize in order to compute epsilon'''
         # To do: distinguish between q and q_tilde
-        g = self.sys_dyn.g_eval(q)
-        grad_c = self.nt_eval(q)
-        G_inv = np.matmul(self.sys_dyn.M_eval(q), np.linalg.inv(grad_c.T) )
+        f_3 = self.sys_dyn.f3_eval(q)
+        grad_c = self.nt_eval_gradient(q)
+        G_inv = np.matmul( np.linalg.inv(self.sys_dyn.G_eval(q)), np.linalg.inv(grad_c.T) )
         ei = np.zeros((1,self.n))
         ei[0,ii] = 1.0
 
+        # Apply nonlinear transform and check that the grid search point q is in Q delta
+        if self.check_Q_delta(self.nt_eval(q)):
 
-        # Function to minimize to compute epsilon
-        fi = (self.u_max[ii] - abs(g[ii]))/( max(np.absolute(np.matmul(ei,G_inv).flatten())) ) - self.eta
+            # Function to minimize to compute epsilon
+            fi = (self.u_max[ii] - abs(f_3[ii]))/( max(np.absolute(np.matmul(ei,G_inv).flatten())) ) - self.eta
 
-        if fi <= 0: # check if infeasible delta/eta/umax/umin were chosen
-            print('epsilon <= ')
-            print(fi)
-            raise TypeError('In computing epsilon, epsilon <=0 was encountered!. Choose eta_bar smaller or increase input constraints')
+            if fi <= 0: # check if infeasible delta/eta/umax/umin were chosen
+                print('epsilon <= ')
+                print(fi)
+                raise TypeError('In computing epsilon, epsilon <=0 was encountered!. Choose eta_bar smaller or increase input constraints')
 
-        return fi
+            return fi
+
+        # If q is not in Q delta, return NaN
+        else:
+            #print('found q not in Qdelta: '+str(q))
+            return np.inf
 
     def compute_gamma2_star_function(self,ii,q, dq, data):
         '''Compute function to minimize in order to compute gamma2_star'''
-        g = self.sys_dyn.g_eval(q)
-        M = self.sys_dyn.M_eval(q)
-        Mi_max = max(np.absolute(M[ii,:]))
+        f_3 = self.sys_dyn.f3_eval(q)
+        grad_c = self.nt_eval_gradient(q)
+        G_inv = np.matmul( np.linalg.inv(self.sys_dyn.G_eval(q)), np.linalg.inv(grad_c.T) )
+        Ginv_i_max = max(np.absolute(G_inv[ii,:]))
         a = self.alpha.eval(2.0*self.delta + max(np.absolute(np.array(self.q_max) - np.array(self.q_min))))
-        y = self.y_eval(q)
+        y = self.y_eval(self.nt_eval(q))
 
-        di = self.sys_dyn.F[ii,ii]/( Mi_max*y + self.sys_dyn.kc*a )
-        ci = (abs(g[ii]) + (self.epsilon + self.eta)*Mi_max- self.u_max[ii] )/( Mi_max*y*a + self.sys_dyn.kc*a**2 )
 
-        gi = 0.5*( -di + math.sqrt(di**2 - 4.0*ci) )
+        # Apply nonlinear transform and check that the grid search point q is in Q delta
+        if self.check_Q_delta(self.nt_eval(q)):
 
-        if gi <= 0:
-            print('gamma2_star <=')
-            print(gi)
-            print(Mi_max)
-            print(y)
-            print(a)
-            raise TypeError('In computing gamma2_star, gamma2_star <=0 was encountered!')
+            # TO DO : add bound on Hessian in all sys_dyn.kc terms!
+            di = self.sys_dyn.F[ii,ii]/( Ginv_i_max*y + self.sys_dyn.kc*a )
+            ci = (abs(f_3[ii]) + (self.epsilon + self.eta)*Ginv_i_max- self.u_max[ii] )/( Ginv_i_max*y*a + self.sys_dyn.kc*a**2 )
 
-        return gi
+            gi = 0.5*( -di + math.sqrt(di**2 - 4.0*ci) )
+
+            if gi <= 0:
+                print('gamma2_star <=')
+                print(gi)
+                print(Ginv_i_max)
+                print(y)
+                print(a)
+                raise TypeError('In computing gamma2_star, gamma2_star <=0 was encountered!')
+
+            return gi
+
+        # If q is not in Q delta, return NaN
+        else:
+            #print('found q not in Qdelta: '+str(q))
+            return np.inf
 
     def y_eval(self,q):
         '''compute function y = max dalpha/dhbar, dalphadhubar over all i = 1,..,n'''

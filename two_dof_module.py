@@ -64,6 +64,11 @@ class TwoDOFSystem():
 
         return np.linalg.inv(self.M_eval(q))
 
+    def f3_eval(self, q):
+        '''Return general f3 function in nonlinear dynamics'''
+
+        return self.g_eval(q)
+
     def M_eval(self,q):
         '''Compute inertia matrix'''
 

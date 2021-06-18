@@ -47,10 +47,10 @@ try:
     ctype1 = data['nonlinear_params']['constraint1']['type']
     ctype0_params = data['nonlinear_params']['constraint0']['params']
     ctype1_params = data['nonlinear_params']['constraint1']['params']
-    n_transform = ntm.NonlinearTransformation(two_dof_sys, [ctype0, ctype1], [ctype0_params, ctype1_params])
+    n_transform = ntm.NonlinearTransformation(two_dof_sys.n_joints, [ctype0, ctype1], [ctype0_params, ctype1_params])
     print('Nonlinear tranformation added')
 except:
-    n_transform = None
+    n_transform = ntm.NonlinearTransformation(two_dof_sys.n_joints)
     print('No nonlinear transformation')
 
 # Construct ZCBF class
@@ -67,8 +67,10 @@ zcbf_el1 = ZCBF_module.ZCBF(alpha,beta,q_min,q_max,v_min,v_max,u_min,u_max,gamma
 # Compute safe-by-design ZCBF parameters
 T_sample = data['T_sample']
 if data['compute_zcbf']:
-	zcbf_el1.compute_zcbf_parameters(data['sim_control'], dq=data['dq'], T_sample=T_sample, eps_frac=data['eps_frac'], nu_frac= data['nu_frac'])
-
+    if n_transform.id_bool:
+	   zcbf_el1.compute_zcbf_parameters(data['sim_control'], q_min, q_max, dq=data['dq'], T_sample=T_sample, eps_frac=data['eps_frac'], nu_frac= data['nu_frac'])
+    else: 
+        zcbf_el1.compute_zcbf_parameters(data['sim_control'], data['qt_min'], data['qt_max'], dq=data['dq'], T_sample=T_sample, eps_frac=data['eps_frac'], nu_frac= data['nu_frac'],nt_id_bool=False)
 #raise(SystemExit)
 
 # Setup ode solver
@@ -137,11 +139,15 @@ contour_range = np.linspace(-3.0, 3.0, num=100)
 
 
 fig_ct = 2
+if n_transform == None:
+    plot_class.add_contour(fig_ct, ntm.eval_id, contour_range, contour_range, levels = [q_min[ii]], color='red')
+    plot_class.add_contour(fig_ct, ntm.eval_id, contour_range, contour_range, levels = [q_max[ii]], color='orange')
 
-for ii in range(n_transform.n):
-    plot_class.add_contour(fig_ct, n_transform.c[ii].eval, contour_range, contour_range, levels = [q_min[ii]], color='red')
-    plot_class.add_contour(fig_ct, n_transform.c[ii].eval, contour_range, contour_range, levels = [q_max[ii]], color='orange')
-    #plot_class.add_fill(fig_ct, n_transform.c[ii].eval, contour_range, contour_range, level = [0.01, 0.05])
+else:
+    for ii in range(zcbf_el1.n):
+        plot_class.add_contour(fig_ct, n_transform.c[ii].eval, contour_range, contour_range, levels = [q_min[ii]], color='red')
+        plot_class.add_contour(fig_ct, n_transform.c[ii].eval, contour_range, contour_range, levels = [q_max[ii]], color='orange')
+        #plot_class.add_fill(fig_ct, n_transform.c[ii].eval, contour_range, contour_range, level = [0.01, 0.05])
 plot_class.add_2D_phase(fig_ct, y[:,0:2], color='black')
 
 

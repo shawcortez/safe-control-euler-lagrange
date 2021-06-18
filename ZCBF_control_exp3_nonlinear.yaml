@@ -81,7 +81,7 @@ gains:
 
 #---------------
 # Initial ZCBF parameters
-gamma: 0.4 # 0.4
+gamma: 2.0 # 0.4
 nu: 4571671.0 #10 # 4571671.059604991
 delta: 0.0001 
 eta_bar: 0.1 # 6.5
@@ -91,7 +91,6 @@ compute_zcbf: False  # If true, new safe-by-design zcbf parameters are computed,
 dq: 0.01             # Defines resolution for grid search when computing zcbf parameters
 eps_frac: 0.5       # Fraction of the maximum epsilon to use. The maximum epsilon is the one that satisfies Assumption 1 (from paper)
 nu_frac: 1.0        # Fraction of nu to use if original nu listed here is not within the ZCBF parameter range
-
 
 #---------------
 # ODE parameters

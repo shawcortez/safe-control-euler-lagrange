@@ -47,23 +47,55 @@ class NonlinearConstraints():
         if self.type == 'planar':
             return np.zeros((len(x), len(x)))
 
+class IDConstraints():
+    def __init__(self,ii,n):
+        '''Define identity function for with state of size n'''
+        self.ii = ii
+        self.n = n
+        self.ei = np.eye(n)[:,ii]
+
+    def eval(self, x):
+    
+        return x[self.ii]
+
+    def eval_gradient(self, x):
+
+        return self.ei
+
+    def eval_hessian(self, x):
+
+        return np.zeros((self.n, self.n))
+
 
 class NonlinearTransformation():
-    def __init__(self, dynamics, constraint_type_list, params_list):
+    def __init__(self, n, constraint_type_list=None, params_list=None):
 
         # Store the unstransformed dynamical system
-        self.dynamics = dynamics
-        self.n = dynamics.n_joints # number of position states in the system
+        self.n = n # number of position states in the system
 
-        # Check that the number of constraints is equal to the number of position states
-        if (len(constraint_type_list) != self.n) or (len(params_list) != self.n):
-            raise TypeError('Not enough constraints defined. Need n constraints') 
+        try: # If constraint types non-empty
+            # Check that the number of constraints is equal to the number of position states
+            if (len(constraint_type_list) != self.n) or (len(params_list) != self.n):
+                raise TypeError('Not enough constraints defined. Need n constraints') 
+
+            # Construct constraints
+            self.c = []
+            for ii, ci_type in enumerate(constraint_type_list):
+                self.c.append( NonlinearConstraints(ci_type,params_list[ii]) )
 
 
-        # Construct constraints
-        self.c = []
-        for ii, ci_type in enumerate(constraint_type_list):
-            self.c.append( NonlinearConstraints(ci_type,params_list[ii]) )
+            self.id_bool = False
+
+        except: 
+            # If no constraints defined, use identity functions
+            # Construct constraints
+            self.c = []
+            for ii in range(self.n):
+                self.c.append( IDConstraints(ii,self.n)  )
+
+            self.id_bool = True
+
+       
 
     def eval(self, x):
         '''Transform the given state of the original dynamics'''
@@ -79,6 +111,8 @@ class NonlinearTransformation():
         '''Compute the hessian of the constraint transformation'''
 
         return np.array([self.c[ii].eval_hessian(x) for ii in range(self.n)]  )
+
+
 
 
 def eval_id(x):
