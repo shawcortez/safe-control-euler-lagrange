@@ -75,7 +75,7 @@ class ExtendedClassK():
             return min(rho_qi) 
             
 class ZCBF():
-    def __init__(self,alpha_type,beta_type,q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,sys_dyn=None,n_transform=None):
+    def __init__(self,alpha_type,beta_type,q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,sys_dyn=None,n_transform=None,kh = 0.0):
         '''Initialize ZCBF class with chosen \alpha, \beta functions, state/input constraints, and robustness margins'''
         
         # Store ZCBF parameters
@@ -85,6 +85,7 @@ class ZCBF():
         self.nu = nu
         self.delta = delta
         self.eta = eta_bar
+        self.kh = kh
         
         # Store state/input constraint parameters
         self.q_min = q_min
@@ -155,7 +156,7 @@ class ZCBF():
 
         for ii, qi in enumerate(q):
             if self.h_bar_delta(ii,qi)*self.h_ubar_delta(ii,qi) < -1e-12:
-                print(self.h_bar_delta(ii,qi)*self.h_ubar_delta(ii,qi))
+                #print(self.h_bar_delta(ii,qi)*self.h_ubar_delta(ii,qi))
                 Q_bool = False
 
         return Q_bool
@@ -372,7 +373,8 @@ class ZCBF():
         H = self.nt_eval_hessian(q_tilde)
         grad_c = self.nt_eval_gradient(q_tilde)
 
-        return np.linalg.inv(G).dot( grad_c.dot( np.linalg.inv( grad_c.T ).dot( v_tilde.dot(H.dot(v_tilde)))  )   )
+        #return np.linalg.inv(G).dot( grad_c.dot( np.linalg.inv( grad_c.T ).dot( v_tilde.dot(H.dot(v_tilde)))  )   )
+        return np.linalg.inv(G).dot( np.linalg.inv( grad_c.T ).dot( v_tilde.dot(H.dot(v_tilde)))  )   
 
 
     def compute_zcbf_control(self,q_tilde,v_tilde,f_x_tilde,g_x_tilde,t):
@@ -566,8 +568,10 @@ class ZCBF():
         # To compute epsilon and gamm2_star, we do a grid search over Qdelta for all i 
 
         if nt_id_bool:
-            qmin_delta = qt_min - self.delta*np.ones(self.n)
-            qmax_delta = qt_max + self.delta*np.ones(self.n)
+            qmin_delta_array = qt_min - self.delta*np.ones(self.n)
+            qmax_delta_array = qt_max + self.delta*np.ones(self.n)
+            qmin_delta = qmin_delta_array.tolist()
+            qmax_delta = qmax_delta_array.tolist()
         else:
             qmin_delta = qt_min
             qmax_delta = qt_max
@@ -575,7 +579,7 @@ class ZCBF():
         dq_list = [dq for ii in range(self.n)]
         
         # Compute epsilon parameter
-        max_epsilon = two_dof_module.grid_loop(qmin_delta.tolist(), qmax_delta.tolist(), dq_list, self.compute_eps_function, min)
+        max_epsilon = two_dof_module.grid_loop(qmin_delta, qmax_delta, dq_list, self.compute_eps_function, min)
         self.epsilon = eps_frac*max_epsilon
         print('-----------------')
         print('Epsilon value computed: as ' + str(eps_frac)+'*max epsilon')
@@ -585,7 +589,7 @@ class ZCBF():
         # Compute gamma2_star parameter
         #self.gamma2_star = self.compute_grid_search(self.compute_gamma2_star_function,dq)
         #self.gamma2_star = two_dof_module.compute_grid_search(self.compute_gamma2_star_function,dq,self.q_min - self.delta*np.ones(self.n),self.q_max + self.delta*np.ones(self.n))
-        self.gamma2_star = two_dof_module.grid_loop(qmin_delta.tolist(), qmax_delta.tolist(), dq_list, self.compute_gamma2_star_function, min)
+        self.gamma2_star = two_dof_module.grid_loop(qmin_delta, qmax_delta, dq_list, self.compute_gamma2_star_function, min)
         print('-----------------')
         print('gamma2_star value computed:')
         print('gamma2_star = ' + str(self.gamma2_star))
@@ -766,9 +770,8 @@ class ZCBF():
         # Apply nonlinear transform and check that the grid search point q is in Q delta
         if self.check_Q_delta(self.nt_eval(q)):
 
-            # TO DO : add bound on Hessian in all sys_dyn.kc terms!
-            di = self.sys_dyn.F[ii,ii]/( Ginv_i_max*y + self.sys_dyn.kc*a )
-            ci = (abs(f_3[ii]) + (self.epsilon + self.eta)*Ginv_i_max- self.u_max[ii] )/( Ginv_i_max*y*a + self.sys_dyn.kc*a**2 )
+            di = self.sys_dyn.F[ii,ii]/( Ginv_i_max*y + (self.sys_dyn.kc + self.kh)*a )
+            ci = (abs(f_3[ii]) + (self.epsilon + self.eta)*Ginv_i_max- self.u_max[ii] )/( Ginv_i_max*y*a + (self.sys_dyn.kc + self.kh)*a**2 )
 
             gi = 0.5*( -di + math.sqrt(di**2 - 4.0*ci) )
 
@@ -795,7 +798,233 @@ class ZCBF():
 
         return y
 
+    def compute_nonlinear_fx_bound(self, qt_min, qt_max, dq = 0.5):
+        '''Compute bound on nonlinear transform f_x term as in f_1 dynamic term'''
+
+        dq_list = [dq for ii in range(self.n)]
+        kh = two_dof_module.grid_loop(qt_min, qt_max, dq_list, self.eval_nonlinear_fx_bound, max)
+
+        print('-----------------')
+        print('kh value computed:')
+        print('kh = ' + str(kh))
+
+        return kh
     
+    def eval_nonlinear_fx_bound(self,ii,q, dq, data):
+
+
+        # Apply nonlinear transform and check that the grid search point q is in Q delta
+        if self.check_Q_delta(self.nt_eval(q)):
+
+            grad_c = self.nt_eval_gradient(q)
+            G_inv = np.matmul( np.linalg.inv(self.sys_dyn.G_eval(q)), np.linalg.inv(grad_c.T) )
+            H = self.nt_eval_hessian(q)
 
 
 
+            return np.linalg.norm(G_inv, ord=np.inf)*self.n_transform.compute_hessian_infnorm(q)
+
+        # If q is not in Q delta, return -inf
+        else:
+            return -np.inf
+
+    def compute_system_bounds(self,q_min,q_max,v_min, v_max,dq_ = 0.1, dv_ = 0.1):
+        '''Compute bounds on the system dynamics, km2, kg, kc, kf'''
+
+        # Construct delta lists for q and v if needed
+        if isinstance(dq_,list):
+            dq = dq_
+        else:
+            dq = [dq_ for q in q_min]
+
+        if isinstance(dv_,list):
+            dv = dv_
+        else:
+            dv = [dv_ for v in v_min]
+
+        # Compute kc, kg
+        kc = grid_loop(q_min+v_min, q_max+v_max, dq+dv, self.compute_kc_func,max)
+        print('kc computed: ' + str(kc))
+
+        #raise(SystemExit)
+
+        kg = grid_loop(q_min, q_max, dq, self.compute_kg_func, max)
+        print('kg computed: ' + str(kg))
+
+        #raise(SystemExit)
+
+        # Compute Lipschitz bounds on inv(M)
+        c3 = grid_loop(q_min, q_max, dq, self.compute_L_G_func, max)
+        print('c3 computed: ' + str(c3))
+
+        # Compute system bounds i.e. || inv(M)*( - Cv - Fv - g ) ||_infty + ||inv(M)||_infty ||u||_infty
+        c5 = grid_loop(q_min+v_min, q_max+v_max, dq+dv, self.compute_max_dynamics_func, max)
+        print('c5 computed: ' + str(c5))
+
+        # Compute Lipschitz bounds on inv(M)*( - Cv - Fv - g )
+        c1 = grid_loop(q_min+v_min, q_max+v_max, dq+dv, self.compute_L_dynamics_func, max)
+        print('c1 computed: ' + str(c1))
+
+
+        return
+
+
+    def compute_kc_func(self,ii,x,dx,data):
+        '''function to minimize to compute kc. Equates to finding max value of || C(q,1) || (as an approximation)'''
+        q = x[0:2]
+        v = x[2:4]
+        
+        # Compute system dynamics
+        C = self.sys_dyn.C_eval(q,v)
+
+        if np.linalg.norm(v,ord=np.inf) != 0.0:
+            kc_i = np.linalg.norm(C,ord=np.inf)/ np.linalg.norm(v,ord=np.inf)
+        else:
+            kc_i = 0.0
+
+        #print(kc_i)
+        #print(C)
+        #print(np.linalg.norm(C,ord=np.inf))
+        #print(np.linalg.norm(C))
+
+        return kc_i
+        #return -np.linalg.norm(C)
+
+    def compute_kg_func(self,ii,q, dq,data):
+        '''function to minimize to compute kg. Equates to finding max value of || g(q) ||'''
+        g = self.sys_dyn.g_eval(q)
+
+        return np.linalg.norm(g,ord=np.inf)
+
+    def compute_L_dynamics_func(self,ii,x,dx ,data):
+        '''computes Lipschitz constant of dynamics by computing the slopt of the dynamics for all grid points 
+        around the current x'''
+
+        q = x[0:2]
+        v = x[2:4]
+        xmin_array = np.array(x) - np.array(dx)
+        xmax_array = np.array(x) + np.array(dx)
+        xmin = xmin_array.tolist()
+        xmax = xmax_array.tolist()
+
+        return grid_loop(xmin,xmax,dx,self.compute_L_dynamics_Lipschitz,max, data = x)
+
+    def compute_L_dynamics_Lipschitz(self,ii,x,dx,data):
+        '''computes the slope of the dynamics over dq for the current x w.r.t the centerpoint, data'''
+        q_eps = data[0:2]
+        v_eps = data[2:4]
+        qi = x[0:2]
+        vi = x[2:4]
+
+        G = np.matmul(self.nt_eval_gradient(q_eps).T, self.sys_dyn.G_eval(q_eps))
+        C = self.sys_dyn.C_eval(q_eps,v_eps)
+        fx_non = self.compute_nonlinear_fx(q_eps,np.array(v_eps))
+        g = self.sys_dyn.g_eval(q_eps)
+        dyn_func = np.matmul(G, -np.matmul(C,v_eps) + fx_non - np.matmul(self.sys_dyn.F, v_eps) - g)
+
+        Gi = np.matmul(self.nt_eval_gradient(qi).T, self.sys_dyn.G_eval(qi))
+        Ci = self.sys_dyn.C_eval(qi,vi)
+        fx_non_i = self.compute_nonlinear_fx(qi,np.array(vi))
+        gi = self.sys_dyn.g_eval(qi)
+        dyn_func_i = np.matmul(Gi, -np.matmul(Ci,vi) + fx_non_i- np.matmul(self.sys_dyn.F, vi) - gi)
+
+        if np.linalg.norm(np.array(data) - np.array(x)) == 0.0:
+            fi = 0.0
+        else:
+            fi = (np.linalg.norm(dyn_func_i - dyn_func) )/ np.linalg.norm(np.array(data) - np.array(x))
+
+        return fi
+
+
+    def compute_L_G_func(self,ii,q,dq ,data):
+        '''Computes Lipschitz constant of inv(M). Uses current q from outer loop to check all neighboring
+        grid points to then compute the slope of inv(M) w.r.t all neighboring grid points of data'''
+
+        qmin_array = np.array(q) - np.array(dq)
+        qmax_array = np.array(q) + np.array(dq)
+        qmin = qmin_array.tolist()
+        qmax = qmax_array.tolist()
+        
+        return grid_loop(qmin,qmax,dq,self.compute_L_G_Lipschitz,max, data = q)
+
+        
+
+    def compute_L_G_Lipschitz(self,ii,q,dq,data):
+        '''computes slope: (inv(M) - inv(M))/dq for Lipschitz computation'''
+
+        # G = grad_c.T*G_eval Note: G_eval from sys dynamics is not the complete G! Requres grad_c
+        G = np.matmul(self.nt_eval_gradient(data).T, self.sys_dyn.G_eval(data))
+
+        Gi = np.matmul(self.nt_eval_gradient(q).T ,self.sys_dyn.G_eval(q))
+
+        if np.linalg.norm(np.array(data) - np.array(q)) == 0.0:
+            fi = 0.0
+        else:
+            fi = (np.linalg.norm(Gi - G) )/ np.linalg.norm(np.array(data) - np.array(q))
+
+        return fi
+
+    def compute_max_dynamics_func(self,ii,x,dx ,data):
+        '''Computes max of inv(M)(-Cv - Fv - g + u) . Uses current q from outer loop to check all neighboring
+        grid points to then compute the slope of inv(M) w.r.t all neighboring grid points of data'''
+
+        q = np.array(x[0:2])
+        v = np.array(x[2:4])
+
+        G = np.matmul(self.nt_eval_gradient(q).T ,self.sys_dyn.G_eval(q))
+        C = self.sys_dyn.C_eval(q,v)
+        g = self.sys_dyn.g_eval(q)
+        fx_non = self.compute_nonlinear_fx(q,v)
+
+
+        fi = np.linalg.norm(np.matmul(G, -np.matmul(C,v)+ fx_non - np.matmul(self.sys_dyn.F, v)  -g), ord=np.inf) + np.linalg.norm(G, ord=np.inf)*np.linalg.norm(np.array(self.u_max),ord=np.inf)
+        
+        return fi
+
+def grid_loop(xmin,xmax,dx,func_eval,func_loop=min, data = None):
+    '''Peform grid search over x variable. Start at xmin and increment each component of x by dx resp.
+    At each loop, we evaluate some function, func_eval, and evaluate a function, func_loop, over each 
+    evaluateion of func_eval in the loop.'''
+
+    n_loops = len(xmin)
+
+    return loop_me(n_loops-1,xmin[:],xmax,dx,func_eval,func_loop,data = data)
+
+
+def loop_me(ii,x,xmax,dx,func_eval,func_loop=min, fi=None, data = None):
+    '''Perform recursive grid loop over each element of x and evaluate func_eval for each x. Then evaluate
+    func_loop over each func_eval. Return the value of func_loop evaluated over all loops.'''
+
+    #print('x starting loop:' + str(x))
+    #print('ii starting loop:' + str(ii))
+
+    while x[ii] <= xmax[ii]:
+
+        if ii > 0:
+            
+            #print('enter loop')
+            fi = loop_me(ii-1,x[:],xmax,dx,func_eval,func_loop, fi, data)
+
+            
+            #print('x after loop: ' + str(x))
+
+        else:
+            #print(x)
+            
+            if fi == None:
+                #print('fi = None')
+                fi = func_eval(ii,x,dx, data)
+            else:
+                fi = func_loop(fi, func_eval(ii,x,dx,data))
+
+        # increment step
+        x[ii]  += dx[ii]
+
+        
+        #print(fi)
+        #print(ii)
+
+    #print('exit loop')
+    #print(x)
+
+    return fi

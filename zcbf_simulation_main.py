@@ -61,8 +61,11 @@ delta = data['delta']
 eta_bar = data['eta_bar'] 
 alpha = data['alpha']
 beta = data['beta']
-zcbf_el1 = ZCBF_module.ZCBF(alpha,beta,q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,two_dof_sys,n_transform)
-#zcbf_el2 = ZCBF_module.ZCBF('linear','cubic',q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,two_dof_sys)
+try:
+    zcbf_el1 = ZCBF_module.ZCBF(alpha,beta,q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,two_dof_sys,n_transform, kh=data['nonlinear_params']['kh'])
+except:
+    zcbf_el1 = ZCBF_module.ZCBF(alpha,beta,q_min,q_max,v_min,v_max,u_min,u_max,gamma,nu,delta,eta_bar,two_dof_sys,n_transform)
+
 
 # Compute safe-by-design ZCBF parameters
 T_sample = data['T_sample']
@@ -70,7 +73,7 @@ if data['compute_zcbf']:
     if n_transform.id_bool:
 	   zcbf_el1.compute_zcbf_parameters(data['sim_control'], q_min, q_max, dq=data['dq'], T_sample=T_sample, eps_frac=data['eps_frac'], nu_frac= data['nu_frac'])
     else: 
-        zcbf_el1.compute_zcbf_parameters(data['sim_control'], data['qt_min'], data['qt_max'], dq=data['dq'], T_sample=T_sample, eps_frac=data['eps_frac'], nu_frac= data['nu_frac'],nt_id_bool=False)
+        zcbf_el1.compute_zcbf_parameters(data['sim_control'], data['nonlinear_params']['qt_min'], data['nonlinear_params']['qt_max'], dq=data['dq'], T_sample=T_sample, eps_frac=data['eps_frac'], nu_frac= data['nu_frac'],nt_id_bool=False)
 #raise(SystemExit)
 
 # Setup ode solver
