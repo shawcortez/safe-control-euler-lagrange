@@ -23,7 +23,7 @@ u_min: [-18.0, -10.0]
 # Constraint params
 
 nonlinear_params:
-  kh:  1.6564973788921353
+  kh:   0.7623547488565331
   qt_max: [1.5707963267948966, 2.617993877991494] 
   qt_min: [-1.5707963267948966, 1.5707963267948966] 
   constraint0: 
@@ -48,9 +48,9 @@ grav: 0.0
 km2: 3.844285855764477 # was 5.02176 # TO DO: Remove km2, not used analysis
 kc: 1.5000000000000002 
 kg: 0.0
-c3: 5.061454083331386 # Lipschitz constant of G(q) = nabla_c.T*inv(M)
-c1: 23.598389669576434  # Lipschitz constant of G(q)*( -Cv - inv(G)(vTHv) - Fv - g ) **Notoriously long to compute**
-c5: 267.72255383205203  # Upper bound of dynamics i.e. ||G(q)*(- Cv - inv(G)(vTHv) - Fv - g u)||_infty
+c3: 6.426992095846233 # Lipschitz constant of G(q) = nabla_c.T*inv(M)
+c1: 17.863380273537004  # Lipschitz constant of G(q)*( -Cv - inv(G)(vTHv) - Fv - g ) **Notoriously long to compute**
+c5: 152.91011410541475  # Upper bound of dynamics i.e. ||G(q)*(- Cv - inv(G)(vTHv) - Fv - g u)||_infty
 dq_bounds: 0.1         # Step size used in two_dof_dynamics_bounds.main to compute the above dynamic bounds (for q)
 dv_bounds: 0.1         # Step size used in two_dof_dynamics_bounds.main to compute the above dynamic bounds (for v)
 
@@ -64,10 +64,10 @@ cont_type: 'ZCBF_control' #  'nom_control' #  'nom_control' # nom_control: only 
 # Reference trajectory for nominal controller
 ref:
   # pi/2 + 1.9
-  r0_amp: 0.0 # 1.5
+  r0_amp: 1.5
   r0_omega: 0.5
   # (q_max[1]-q_min[1])/2.0 + 2.1
-  r1_amp: 0.0 #-0.5
+  r1_amp: -0.5
   r1_omega: 1.0
   # (q_max[1]-q_min[1])/2.0 + q_min[1]
   r1_b: 2.0943951023931953
@@ -98,4 +98,4 @@ v0: [0.0, 0.0]
 T_sim: 15.0   # Simulation end time (s)
 N_sim: 1000   # Number of data points from t = 0 to t = T_sim (must be an int)
 sim_control: 'discrete_time' #discrete_time' #discrete_time'  # only options: 'cont_time' for continuous time control or 'discrete_time' for sampled-data control
-T_sample: 0.0002 #(only used) if sim_control = 'discrete_time'
+T_sample: 0.0003 #(only used) if sim_control = 'discrete_time'

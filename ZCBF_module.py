@@ -367,9 +367,43 @@ class ZCBF():
         return np.matmul(M, mu + chi + psi) + np.matmul(C,v)+ np.matmul(self.sys_dyn.F, v) - g
 
 
-    def compute_nonlinear_fx(self, q_tilde, v_tilde):
+    def transform_position(self, q):
+        '''Compute the position for the transformed state'''
+        return self.nt_eval(q)
 
-        G = self.sys_dyn.G_eval(q_tilde)
+    def transform_velocity(self, q, v):
+        '''Compute the velocity of the transformed state'''
+        return self.nt_eval_gradient(q).T.dot(v)
+
+    def transform_G(self, q):
+        '''Compute transform of G matrix multiplying the control input'''
+        G_sys = self.sys_dyn.G_eval(q)
+        grad_c = self.nt_eval_gradient(q)
+        return grad_c.dot(G_sys)
+
+    def transform_dynamics(self, q, v):
+        '''Compute the system dynamics for the transformed system using non-transformed state'''
+
+        # Compute dynamics components from system
+        f_1_sys = self.sys_dyn.f1_eval(q,v)
+        f_2 = self.sys_dyn.f2_eval(q,v)
+        f_3 = self.sys_dyn.f3_eval(q)
+
+        # Compute components of nonlinear transformation
+        G = self.transform_G(q)
+        f_h = self.compute_nonlinear_fx(q,v)
+        f_1 = f_1_sys + f_h
+
+        # Compute transformed dynamics
+        f_x = G.dot( f_1 + f_2 + f_3  )
+        g_x = G
+
+        return f_x, g_x
+
+
+    def compute_nonlinear_fx(self, q_tilde, v_tilde):
+        '''Compute component of nonlinear transform dynamics associated with the constraint Hessian'''
+        G = self.transform_G(q_tilde)
         H = self.nt_eval_hessian(q_tilde)
         grad_c = self.nt_eval_gradient(q_tilde)
 
@@ -382,22 +416,24 @@ class ZCBF():
         system dynamics f_x, g_x and nominal control law u_nom'''
 
         # Convert to transformed states
-        q = self.nt_eval(q_tilde)
-        v = self.nt_eval_gradient(q_tilde).T.dot(v_tilde)
+        q = self.transform_position(q_tilde)
+        v = self.transform_velocity(q_tilde, v_tilde)
 
         # Convert to transformed dynamics
-        grad_c = self.nt_eval_gradient(q_tilde)
-        f_x = grad_c.T.dot(f_x_tilde)
-        g_x = grad_c.T.dot(g_x_tilde)
+        #grad_c = self.nt_eval_gradient(q_tilde)
+        #f_x = grad_c.T.dot(f_x_tilde)
+        #g_x = grad_c.T.dot(g_x_tilde)
+        f_x, g_x = self.transform_dynamics(q_tilde, v_tilde)
 
         # Construct Lie derivatives of b w.r.t system dynamics
         S = np.concatenate((-np.eye(self.n),np.eye(self.n)))
-        nt_fx = self.compute_nonlinear_fx(q_tilde, v_tilde)
-        Lf_b1 = S.dot(f_x + nt_fx)
+        #nt_fx = self.compute_nonlinear_fx(q_tilde, v_tilde)
+        #Lf_b1 = S.dot(f_x + nt_fx)
+        Lf_b1 = S.dot(f_x)
         Lg_b = S.dot(g_x)
 
         # Compute nominal control law
-        u_nom = self.sys_dyn.nominal_control(q,v,t)
+        u_nom = self.sys_dyn.nominal_control(q_tilde,v_tilde,t)
 
         # Construct zcbf based components of the QP
         zcbf_p = np.zeros(2*self.n)
@@ -734,8 +770,7 @@ class ZCBF():
         '''Compute function to minimize in order to compute epsilon'''
         # To do: distinguish between q and q_tilde
         f_3 = self.sys_dyn.f3_eval(q)
-        grad_c = self.nt_eval_gradient(q)
-        G_inv = np.matmul( np.linalg.inv(self.sys_dyn.G_eval(q)), np.linalg.inv(grad_c.T) )
+        G_inv = np.linalg.inv(self.transform_G(q))
         ei = np.zeros((1,self.n))
         ei[0,ii] = 1.0
 
@@ -760,8 +795,7 @@ class ZCBF():
     def compute_gamma2_star_function(self,ii,q, dq, data):
         '''Compute function to minimize in order to compute gamma2_star'''
         f_3 = self.sys_dyn.f3_eval(q)
-        grad_c = self.nt_eval_gradient(q)
-        G_inv = np.matmul( np.linalg.inv(self.sys_dyn.G_eval(q)), np.linalg.inv(grad_c.T) )
+        G_inv = np.linalg.inv(self.transform_G(q))
         Ginv_i_max = max(np.absolute(G_inv[ii,:]))
         a = self.alpha.eval(2.0*self.delta + max(np.absolute(np.array(self.q_max) - np.array(self.q_min))))
         y = self.y_eval(self.nt_eval(q))
@@ -816,11 +850,7 @@ class ZCBF():
         # Apply nonlinear transform and check that the grid search point q is in Q delta
         if self.check_Q_delta(self.nt_eval(q)):
 
-            grad_c = self.nt_eval_gradient(q)
-            G_inv = np.matmul( np.linalg.inv(self.sys_dyn.G_eval(q)), np.linalg.inv(grad_c.T) )
-            H = self.nt_eval_hessian(q)
-
-
+            G_inv = np.linalg.inv(self.transform_G(q))
 
             return np.linalg.norm(G_inv, ord=np.inf)*self.n_transform.compute_hessian_infnorm(q)
 
@@ -916,17 +946,19 @@ class ZCBF():
         qi = x[0:2]
         vi = x[2:4]
 
-        G = np.matmul(self.nt_eval_gradient(q_eps).T, self.sys_dyn.G_eval(q_eps))
-        C = self.sys_dyn.C_eval(q_eps,v_eps)
-        fx_non = self.compute_nonlinear_fx(q_eps,np.array(v_eps))
-        g = self.sys_dyn.g_eval(q_eps)
-        dyn_func = np.matmul(G, -np.matmul(C,v_eps) + fx_non - np.matmul(self.sys_dyn.F, v_eps) - g)
+        # G = np.matmul(self.nt_eval_gradient(q_eps).T, self.sys_dyn.G_eval(q_eps))
+        # C = self.sys_dyn.C_eval(q_eps,v_eps)
+        # fx_non = self.compute_nonlinear_fx(q_eps,np.array(v_eps))
+        # g = self.sys_dyn.g_eval(q_eps)
+        # dyn_func = np.matmul(G, -np.matmul(C,v_eps) + fx_non - np.matmul(self.sys_dyn.F, v_eps) - g)
+        dyn_func, gx_eps = self.transform_dynamics(q_eps, np.array(v_eps))
 
-        Gi = np.matmul(self.nt_eval_gradient(qi).T, self.sys_dyn.G_eval(qi))
-        Ci = self.sys_dyn.C_eval(qi,vi)
-        fx_non_i = self.compute_nonlinear_fx(qi,np.array(vi))
-        gi = self.sys_dyn.g_eval(qi)
-        dyn_func_i = np.matmul(Gi, -np.matmul(Ci,vi) + fx_non_i- np.matmul(self.sys_dyn.F, vi) - gi)
+        # Gi = np.matmul(self.nt_eval_gradient(qi).T, self.sys_dyn.G_eval(qi))
+        # Ci = self.sys_dyn.C_eval(qi,vi)
+        # fx_non_i = self.compute_nonlinear_fx(qi,np.array(vi))
+        # gi = self.sys_dyn.g_eval(qi)
+        # dyn_func_i = np.matmul(Gi, -np.matmul(Ci,vi) + fx_non_i- np.matmul(self.sys_dyn.F, vi) - gi)
+        dyn_func_i, gx_i = self.transform_dynamics(qi, np.array(vi))
 
         if np.linalg.norm(np.array(data) - np.array(x)) == 0.0:
             fi = 0.0
@@ -953,9 +985,11 @@ class ZCBF():
         '''computes slope: (inv(M) - inv(M))/dq for Lipschitz computation'''
 
         # G = grad_c.T*G_eval Note: G_eval from sys dynamics is not the complete G! Requres grad_c
-        G = np.matmul(self.nt_eval_gradient(data).T, self.sys_dyn.G_eval(data))
+        #G = np.matmul(self.nt_eval_gradient(data).T, self.sys_dyn.G_eval(data))
+        G = self.transform_G(data)
 
-        Gi = np.matmul(self.nt_eval_gradient(q).T ,self.sys_dyn.G_eval(q))
+        #Gi = np.matmul(self.nt_eval_gradient(q).T ,self.sys_dyn.G_eval(q))
+        Gi = self.transform_G(q)
 
         if np.linalg.norm(np.array(data) - np.array(q)) == 0.0:
             fi = 0.0
@@ -971,14 +1005,16 @@ class ZCBF():
         q = np.array(x[0:2])
         v = np.array(x[2:4])
 
-        G = np.matmul(self.nt_eval_gradient(q).T ,self.sys_dyn.G_eval(q))
-        C = self.sys_dyn.C_eval(q,v)
-        g = self.sys_dyn.g_eval(q)
-        fx_non = self.compute_nonlinear_fx(q,v)
+        # G = np.matmul(self.nt_eval_gradient(q).T ,self.sys_dyn.G_eval(q))
+        # C = self.sys_dyn.C_eval(q,v)
+        # g = self.sys_dyn.g_eval(q)
+        # fx_non = self.compute_nonlinear_fx(q,v)
+
+        fx, G = self.transform_dynamics(q,v)
 
 
-        fi = np.linalg.norm(np.matmul(G, -np.matmul(C,v)+ fx_non - np.matmul(self.sys_dyn.F, v)  -g), ord=np.inf) + np.linalg.norm(G, ord=np.inf)*np.linalg.norm(np.array(self.u_max),ord=np.inf)
-        
+        #fi = np.linalg.norm(np.matmul(G, -np.matmul(C,v)+ fx_non - np.matmul(self.sys_dyn.F, v)  -g), ord=np.inf) + np.linalg.norm(G, ord=np.inf)*np.linalg.norm(np.array(self.u_max),ord=np.inf)
+        fi = np.linalg.norm( fx, ord=np.inf) + np.linalg.norm(G, ord=np.inf)*np.linalg.norm(np.array(self.u_max),ord=np.inf)
         return fi
 
 def grid_loop(xmin,xmax,dx,func_eval,func_loop=min, data = None):

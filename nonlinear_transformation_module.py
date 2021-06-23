@@ -43,7 +43,6 @@ class NonlinearConstraints():
 
         if self.type == 'ellipsoid':
             return -0.5*(self.P + self.P.T)
-            #return -0.0*(self.P + self.P.T) #CHANGE THIS IS FOR DEBUGGING
 
         if self.type == 'planar':
             return np.zeros((len(x), len(x)))
@@ -107,7 +106,7 @@ class NonlinearTransformation():
         '''Compute the gradient of the constraint transformation'''
 
         # Q: Should the gradient term be transposed??
-        return np.array([self.c[ii].eval_gradient(x).T for ii in range(self.n)]  )
+        return np.array([self.c[ii].eval_gradient(x) for ii in range(self.n)]  ).T
 
     def eval_hessian(self, x):
         '''Compute the hessian of the constraint transformation'''

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 
 class TwoDOFSystem():
-    def __init__(self,m_list,l_list,f_list,I_list,grav,gains,ref, nom_control_type, kc=None, kg=None, km2=None, c3 = None, c1 = None, c5 = None):
+    def __init__(self,m_list,l_list,f_list,I_list,grav,gains,ref, nom_control_type, kc=None, kg=None, km2=None, c3 = None, c1 = None, c5 = None, forward_kinematics_bool = False):
         '''Initialize class defining 2DOF system dynamics'''
 
         # Store model parameters
@@ -31,6 +31,7 @@ class TwoDOFSystem():
         self.c3 = c3
         self.c1 = c1
         self.c5 = c5
+        self.forward_kinematics_bool = forward_kinematics_bool
 
     def f_eval(self, q):
         '''Compute the forward kinematics map for the end-effector'''
@@ -49,14 +50,37 @@ class TwoDOFSystem():
         l0 = self.l_list[0]
         l1 = self.l_list[1]
 
-        J = np.zeros(self.n_joints, self.n_joints)
+        J = np.zeros((self.n_joints, self.n_joints))
 
-        #J[0,0] = 
+        J[0,0] = -l0*np.sin(q[0]) - l1*np.sin(q[0] + q[1])
+        J[0,1] = -l1*np.sin(q[0] + q[1]) 
+        J[1,0] = l0*np.cos(q[0]) + l1*np.cos(q[0] + q[1])
+        J[1,1] = l1*np.cos(q[0] + q[1])
 
         return
 
     def H_eval(self, q):
         '''Compute the Hessian of the forward kinematic map'''
+
+        l0 = self.l_list[0]
+        l1 = self.l_list[1]
+        c0 = np.cos(q[0])
+        c01 = np.cos(q[0] + q[1])
+        s0 = np.sin(q[0])
+        s01 = np.sin(q[0] + q[1])
+
+        H = np.zeros((self.n_joints, self.n_joints, self.n_joints))
+
+        H[0,0,0] = -l0*c0 - l1*c01
+        H[0,0,1] = -l1*c01
+        H[0,1,0] = -l1*c01
+        H[0,1,1] = -l1*c01
+        H[1,0,0] = -l0*s0 - l1*s01
+        H[1,0,1] = -l1*s01
+        H[1,1,0] = -l1*s01
+        H[1,1,1] = -l1*s01
+
+        return H
 
     def G_eval(self, q):
         '''return general G matrix of dynamics: dot(v) = G ( f1 + f2 + f3 + u). This could be the inertia matrix or generalized inertia
@@ -67,7 +91,7 @@ class TwoDOFSystem():
     def f1_eval(self, q, v):
         '''Return general f3 function in nonlinear dynamics'''
 
-        return -self.C_eval(q)
+        return -self.C_eval(q,v).dot(v)
 
     def f2_eval(self, q, v):
         '''Return general f3 function in nonlinear dynamics'''
@@ -165,8 +189,10 @@ class TwoDOFSystem():
 
     def computed_torque_reference(self,t):
         '''Compute reference trajectory for nominal controller'''
-
-        r0 = self.ref['r0_amp']*np.sin(self.ref['r0_omega']*t)
+        try:
+            r0 = self.ref['r0_amp']*np.sin(self.ref['r0_omega']*t) + self.ref['r0_b']
+        except:
+            r0 = self.ref['r0_amp']*np.sin(self.ref['r0_omega']*t)
         r0_dot = self.ref['r0_amp']*self.ref['r0_omega']*np.cos(self.ref['r0_omega']*t)
         r0_ddot = -self.ref['r0_amp']*self.ref['r0_omega']**2*np.sin(self.ref['r0_omega']*t)
 

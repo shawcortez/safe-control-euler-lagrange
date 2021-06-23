@@ -69,7 +69,19 @@ zcbf_el1 = ZCBF_module.ZCBF(alpha,beta,q_min,q_max,v_min,v_max,u_min,u_max,gamma
 zcbf_el1.compute_nonlinear_fx_bound( data['nonlinear_params']['qt_min'], data['nonlinear_params']['qt_max'], dq=data['dq'])
 
 # Compute dynamic bounds
-zcbf_el1.compute_system_bounds(data['nonlinear_params']['qt_min'], data['nonlinear_params']['qt_max'] , v_min[:], v_max[:],dq_= data['dq_bounds'], dv_ = data['dv_bounds'])
+#zcbf_el1.compute_system_bounds(data['nonlinear_params']['qt_min'], data['nonlinear_params']['qt_max'] , v_min[:], v_max[:],dq_= data['dq_bounds'], dv_ = data['dv_bounds'])
+
+# Test hessian computations
+# x = np.array([0.0, 2.0])
+# print('x: '+ str(x))
+# grad = n_transform.eval_gradient(x)
+# print('Gradient: '+str(grad))
+# H = n_transform.eval_hessian(x)
+# print('Hessian: '+ str(H))
+# v = np.array([1.0, 1.0])
+# print('v: '+ str(v))
+# print('Hv = ' + str( H.dot(v) ))
+# print('vTHv = '+ str( v.dot(H.dot(v) )))
 
 plot_class = mpm.PlotClass()
 contour_range = np.linspace(-3.0, 3.0, num=100)

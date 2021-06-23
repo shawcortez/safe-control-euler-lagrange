@@ -60,22 +60,21 @@ class PlotClass():
 
 		return self.plot_counter
 
-	def plot_2D_phase(self,q, label_str= ['q_0', 'q_1']):
+	def plot_2D_phase(self,plot_count, q, label_str= ['q_0', 'q_1'],colors='black'):
 		'''Plot q1 vs q2 trajectory'''
-		self.plot_counter += 1
 		
-		plt.figure(self.plot_counter)
-		plt.plot(q[:,0],q[:,1],c= self.c_blue, linewidth= self.line_width, label='traj')
-		plt.plot(q[0,0],q[0,1],c= self.c_green, marker='*',linewidth= 10*self.line_width, label='start')
+		plt.figure(plot_count)
+		plt.plot(q[:,0],q[:,1],c= colors, linewidth= self.line_width, label='traj')
+		#plt.plot(q[0,0],q[0,1],c= self.c_green, marker='*',linewidth= 10*self.line_width, label='start')
 		#plt.plot(q[-1,0], q[-1,1], c= self.c_orange, marker='*', linewidth= 10*self.line_width, label= 'end')
-		plt.tick_params(labelsize=self.fontsize)
-		plt.legend()
+		# plt.tick_params(labelsize=self.fontsize)
+		# plt.legend()
 
-		plt.xlabel(r'$\displaystyle '+label_str[0]+'$',fontsize=self.fontsize)
-		plt.ylabel(r'$\displaystyle '+label_str[1]+'$',fontsize=self.fontsize)
-		plt.axis('equal')
+		# plt.xlabel(r'$\displaystyle '+label_str[0]+'$',fontsize=self.fontsize)
+		# plt.ylabel(r'$\displaystyle '+label_str[1]+'$',fontsize=self.fontsize)
+		# plt.axis('equal')
 
-		return self.plot_counter
+		return
 
 	def add_2D_phase(self, plt_count, q, color='black'):
 		'''Plot q1 vs q2 in existing phase plot'''
@@ -105,7 +104,7 @@ class PlotClass():
 			
 
 
-	def add_contour(self,plt_count, func,x_plot, y_plot, levels=[0.0], color='green'):
+	def add_contour(self,plt_count, func,x_plot, y_plot, levels=[0.0], color='green', linestyle='solid', linewidth=[1.5]):
 		'''Add contour of give func function to an existing plot for specified levels'''
 		n = len(x_plot)
 		m = len(y_plot)
@@ -118,7 +117,7 @@ class PlotClass():
 					z_plot[ii,jj] = func(var)
 
 			plt.figure(plt_count)
-			plt.contour(x_plot, y_plot, z_plot.T, levels[kk], colors=color)
+			plt.contour(x_plot, y_plot, z_plot.T, levels[kk], colors=color, linestyles=linestyle, linewidths= linewidth)
 
 	def add_2Dgrid(self,plt_count, q_min, q_max, dq, color='black'):
 		'''Add grid points defined by q_min, q_max with interval dq'''
