@@ -57,7 +57,7 @@ dv_bounds: 0.1         # Step size used in two_dof_dynamics_bounds.main to compu
 #---------------
 # Define nominal control type (only supports ComputedTorque or PD)
 nom_control: 'ComputedTorque' #(only supports ComputedTorque or PD)
-cont_type: 'ZCBF_control' #'nom_control' # 'ZCBF_control' #   nom_control: only implement nominal control, ZCBF_contol: implement ZCBF_controller for cont time, ZCBF_control_sampled: implement sampled-data controller
+cont_type: ZCBF_control' # 'nom_control' #''nom_control' # 'ZCBF_control' #   nom_control: only implement nominal control, ZCBF_contol: implement ZCBF_controller for cont time, ZCBF_control_sampled: implement sampled-data controller
 
 
 #---------------

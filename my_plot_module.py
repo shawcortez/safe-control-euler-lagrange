@@ -60,11 +60,11 @@ class PlotClass():
 
 		return self.plot_counter
 
-	def plot_2D_phase(self,plot_count, q, label_str= ['q_0', 'q_1'],colors='black'):
+	def plot_2D_phase(self,plot_count, q, label_str= ['q_0', 'q_1'],colors='black',linestyle='solid',linewidth=1.0):
 		'''Plot q1 vs q2 trajectory'''
 		
 		plt.figure(plot_count)
-		plt.plot(q[:,0],q[:,1],c= colors, linewidth= self.line_width, label='traj')
+		plt.plot(q[:,0],q[:,1],c= colors, linewidth= linewidth, label='traj',linestyle=linestyle)
 		#plt.plot(q[0,0],q[0,1],c= self.c_green, marker='*',linewidth= 10*self.line_width, label='start')
 		#plt.plot(q[-1,0], q[-1,1], c= self.c_orange, marker='*', linewidth= 10*self.line_width, label= 'end')
 		# plt.tick_params(labelsize=self.fontsize)
